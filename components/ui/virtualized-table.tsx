@@ -25,7 +25,7 @@ interface VirtualizedTableProps {
   sortKey: string;
   sortDir: "asc" | "desc";
   onHeaderSort?: (
-    sortKey: "name" | "shortName" | "basePrice" | "lastLowPrice" | "avg24hPrice" | "traderSellPrice" | "traderBuyPrice" | "buyLimit"
+    sortKey: "name" | "shortName" | "basePrice" | "lastLowPrice" | "avg24hPrice" | "traderSellPrice" | "traderBuyPrice" | "buyLimit" | "netProfit"
   ) => void;
   onToggleFavorite?: (itemId: string) => void;
   isFavorite?: (itemId: string) => boolean;
@@ -95,6 +95,32 @@ export function VirtualizedTable({
               return (prev?.priceRUB ?? 0) < curr.priceRUB ? prev : curr;
             }, null)
         : null;
+
+      // Calculate net profit: base value - cheaper purchase option
+      const fleaPrice = item.lastLowPrice || 0;
+      const traderBuyPrice = bestBuyPrice?.priceRUB || 0;
+      
+      let netProfit = 0;
+      let purchaseSource = "";
+      
+      if (fleaPrice > 0 && traderBuyPrice > 0) {
+        // Both available, use cheaper option
+        if (fleaPrice < traderBuyPrice) {
+          netProfit = item.basePrice - fleaPrice;
+          purchaseSource = "Flea";
+        } else {
+          netProfit = item.basePrice - traderBuyPrice;
+          purchaseSource = bestBuyPrice?.vendor?.normalizedName || "Trader";
+        }
+      } else if (fleaPrice > 0) {
+        // Only flea available
+        netProfit = item.basePrice - fleaPrice;
+        purchaseSource = "Flea";
+      } else if (traderBuyPrice > 0) {
+        // Only trader available
+        netProfit = item.basePrice - traderBuyPrice;
+        purchaseSource = bestBuyPrice?.vendor?.normalizedName || "Trader";
+      }
 
       return (
         <div
@@ -223,6 +249,25 @@ export function VirtualizedTable({
           <Cell className="text-muted-foreground text-right w-[120px]">
             {bestBuyPrice?.vendor?.buyLimit ? bestBuyPrice.vendor.buyLimit.toLocaleString() : '∞'}
           </Cell>
+          <Cell className={cn(
+            "text-right w-[120px] font-semibold",
+            netProfit > 0 ? "text-green-500" : netProfit < 0 ? "text-red-500" : "text-muted-foreground"
+          )}>
+            {fleaPrice > 0 || traderBuyPrice > 0 ? (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    {netProfit > 0 ? "+" : ""}{netProfit.toLocaleString()}
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Buy from: {purchaseSource}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : (
+              "-"
+            )}
+          </Cell>
         </div>
       );
     },
@@ -288,6 +333,13 @@ export function VirtualizedTable({
         >
           Buy Limit{" "}
           {sortKey === "buyLimit" && (sortDir === "asc" ? "↑" : "↓")}
+        </div>
+        <div
+          className="text-muted-foreground text-right p-2 w-[120px] cursor-pointer hover:bg-muted/30 transition-colors"
+          onClick={() => onHeaderSort?.("netProfit")}
+        >
+          Net Profit +/-{" "}
+          {sortKey === "netProfit" && (sortDir === "asc" ? "↑" : "↓")}
         </div>
       </div>
       <List

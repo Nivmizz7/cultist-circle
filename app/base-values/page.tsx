@@ -55,6 +55,7 @@ interface FilterState {
     | "traderSellPrice"
     | "traderBuyPrice"
     | "buyLimit"
+    | "netProfit"
     | "bestValue"; // Add name/shortName back
   sortDir: "asc" | "desc";
 }
@@ -179,6 +180,7 @@ export default function ItemsTablePage() {
         | "traderSellPrice"
         | "traderBuyPrice"
         | "buyLimit"
+        | "netProfit"
         | "bestValue"
     ) => {
       // Use startTransition to mark UI updates as non-urgent
@@ -220,6 +222,7 @@ export default function ItemsTablePage() {
       "Buy from Trader Name",
       "Buy from Trader Level",
       "Buy Limit",
+      "Net Profit +/-",
       "Link",
     ];
 
@@ -258,6 +261,19 @@ export default function ItemsTablePage() {
         const bestBuyTraderLevel = bestBuyOffer?.vendor?.minTraderLevel || "";
         const bestBuyLimit = bestBuyOffer?.vendor?.buyLimit;
 
+        // Calculate net profit
+        const fleaPrice = item.lastLowPrice || 0;
+        const traderBuyPrice = bestBuyPrice;
+        let netProfit = 0;
+        
+        if (fleaPrice > 0 && traderBuyPrice > 0) {
+          netProfit = item.basePrice - Math.min(fleaPrice, traderBuyPrice);
+        } else if (fleaPrice > 0) {
+          netProfit = item.basePrice - fleaPrice;
+        } else if (traderBuyPrice > 0) {
+          netProfit = item.basePrice - traderBuyPrice;
+        }
+
         // Escape categories properly
         const categories = item.categories?.map((c) => c.name).join(", ") || "";
 
@@ -273,6 +289,7 @@ export default function ItemsTablePage() {
           `"${bestBuyTraderName.replace(/"/g, '""')}"`,
           bestBuyTraderLevel,
           bestBuyLimit === undefined ? 'N/A' : (bestBuyLimit === null ? '∞' : bestBuyLimit),
+          netProfit,
           `"${(item.link || "").replace(/"/g, '""')}"`,
         ].join(",");
       }),
@@ -439,7 +456,7 @@ export default function ItemsTablePage() {
 
       // Precompute best buy prices if we're sorting by traderBuyPrice or buyLimit
       const bestBuyPrices =
-        filter.sort === "traderBuyPrice" || filter.sort === "buyLimit"
+        filter.sort === "traderBuyPrice" || filter.sort === "buyLimit" || filter.sort === "netProfit"
           ? new Map<string, { price: number; limit: number }>(
               filteredItems.map((item) => {
                 let bestPrice = 0;
@@ -482,6 +499,27 @@ export default function ItemsTablePage() {
           return filter.sortDir === "desc" 
             ? bData.limit - aData.limit 
             : aData.limit - bData.limit;
+        }
+        if (filter.sort === "netProfit" && bestBuyPrices) {
+          // Calculate net profit for both items
+          const calcNetProfit = (item: MinimalItem) => {
+            const fleaPrice = item.lastLowPrice || 0;
+            const traderBuyPrice = bestBuyPrices.get(item.id)?.price || 0;
+            
+            if (fleaPrice > 0 && traderBuyPrice > 0) {
+              // Use cheaper option
+              return item.basePrice - Math.min(fleaPrice, traderBuyPrice);
+            } else if (fleaPrice > 0) {
+              return item.basePrice - fleaPrice;
+            } else if (traderBuyPrice > 0) {
+              return item.basePrice - traderBuyPrice;
+            }
+            return 0;
+          };
+          
+          const aProfit = calcNetProfit(a);
+          const bProfit = calcNetProfit(b);
+          return filter.sortDir === "desc" ? bProfit - aProfit : aProfit - bProfit;
         }
         const sortKey = filter.sort as
           | "name"
