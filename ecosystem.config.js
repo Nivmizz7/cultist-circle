@@ -5,7 +5,7 @@ module.exports = {
       script: "bun",
       args: "run dev",
       env: {
-        NODE_ENV: "production",
+        NODE_ENV: "development",
         PORT: "3489",
       },
     },
@@ -14,7 +14,7 @@ module.exports = {
       script: "bun",
       args: "run dev",
       env: {
-        NODE_ENV: "production",
+        NODE_ENV: "development",
         PORT: "3490",
       },
     },
