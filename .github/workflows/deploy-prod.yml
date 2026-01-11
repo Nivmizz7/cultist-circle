@@ -26,6 +26,5 @@ jobs:
             git fetch --all
             git checkout master
             git pull origin master
-            bun install --production=false
-            bun run build
+            bun install
             pm2 startOrReload ecosystem.config.js --only "${{ secrets.PM2_APP_PROD }}"
