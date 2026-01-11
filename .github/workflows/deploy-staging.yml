@@ -26,5 +26,10 @@ jobs:
             git fetch --all
             git checkout dev
             git pull origin dev
-            bun install
+            if ! command -v bun >/dev/null 2>&1; then
+              curl -fsSL https://bun.sh/install | bash
+              export BUN_INSTALL="$HOME/.bun"
+              export PATH="$BUN_INSTALL/bin:$PATH"
+            fi
+            ~/.bun/bin/bun install
             pm2 startOrReload ecosystem.config.js --only "${{ secrets.PM2_APP_STAGING }}"
