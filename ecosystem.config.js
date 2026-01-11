@@ -3,7 +3,7 @@ module.exports = {
     {
       name: "cultistcircle-staging",
       script: "bun",
-      args: "run start",
+      args: "run dev",
       env: {
         NODE_ENV: "production",
         PORT: "3489",
@@ -12,7 +12,7 @@ module.exports = {
     {
       name: "cultistcircle-prod",
       script: "bun",
-      args: "run start",
+      args: "run dev",
       env: {
         NODE_ENV: "production",
         PORT: "3490",
